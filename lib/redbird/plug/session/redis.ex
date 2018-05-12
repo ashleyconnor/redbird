@@ -14,10 +14,14 @@ defmodule Plug.Session.REDIS do
     opts
   end
 
-  def get(_conn, namespaced_key, _init_options) do
+  def get(_conn, namespaced_key, opts) do
     case get(namespaced_key) do
-      :undefined -> {nil, %{}}
-      value -> {namespaced_key, value |> :erlang.binary_to_term()}
+      :undefined ->
+        {nil, %{}}
+
+      value ->
+        if opts[:refresh_on_touch], do: expire(namespaced_key, session_expiration(opts))
+        {namespaced_key, value |> :erlang.binary_to_term()}
     end
   end
 
@@ -40,7 +44,7 @@ defmodule Plug.Session.REDIS do
         key
 
       response ->
-        if counter > 5 do
+        if counter > 10 do
           Redbird.RedisError.raise(error: response, key: key)
         else
           set_key_with_retries(key, data, seconds, counter + 1)

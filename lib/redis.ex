@@ -5,8 +5,8 @@ defmodule Redbird.Redis do
     {:ok, client}
   end
 
-  def get(value) do
-    Exredis.Api.get(pid(), value)
+  def get(key) do
+    Exredis.Api.get(pid(), key)
   end
 
   def setex(%{key: key, value: value, seconds: seconds}) do
@@ -23,5 +23,13 @@ defmodule Redbird.Redis do
 
   def pid do
     :redbird_phoenix_session
+  end
+
+  def expire(key, expiration_in_seconds) do
+    Exredis.Api.expire(pid(), key, expiration_in_seconds)
+  end
+
+  def ttl(key) do
+    Exredis.Api.ttl(pid(), key)
   end
 end
