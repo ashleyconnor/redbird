@@ -14,13 +14,13 @@ defmodule Plug.Session.REDIS do
     opts
   end
 
-  def get(_conn, namespaced_key, opts) do
+  def get(_conn, namespaced_key, _opts) do
     case get(namespaced_key) do
       :undefined ->
         {nil, %{}}
 
       value ->
-        if opts[:refresh_on_touch], do: expire(namespaced_key, session_expiration(opts))
+        if refresh_on_touch(), do: expire(namespaced_key, session_expiration())
         {namespaced_key, value |> :erlang.binary_to_term()}
     end
   end
@@ -29,17 +29,17 @@ defmodule Plug.Session.REDIS do
     put(conn, add_namespace(generate_random_key()), data, init_options)
   end
 
-  def put(_conn, namespaced_key, data, init_options) do
+  def put(_conn, namespaced_key, data, _init_options) do
     set_key_with_retries(
       namespaced_key,
       data,
-      session_expiration(init_options),
+      session_expiration(),
       1
     )
   end
 
-  defp set_key_with_retries(key, data, seconds, counter) do
-    case setex(%{key: key, value: data, seconds: seconds}) do
+  defp set_key_with_retries(key, data, expiration_time_seconds, counter) do
+    case setex(%{key: key, value: data, seconds: expiration_time_seconds}) do
       :ok ->
         key
 
@@ -47,7 +47,7 @@ defmodule Plug.Session.REDIS do
         if counter > 10 do
           Redbird.RedisError.raise(error: response, key: key)
         else
-          set_key_with_retries(key, data, seconds, counter + 1)
+          set_key_with_retries(key, data, expiration_time_seconds, counter + 1)
         end
     end
   end
@@ -70,11 +70,12 @@ defmodule Plug.Session.REDIS do
     :crypto.strong_rand_bytes(96) |> Base.encode64()
   end
 
-  defp session_expiration(opts) do
-    case opts[:expiration_in_seconds] do
-      seconds when is_integer(seconds) -> seconds
-      _ -> @max_session_time
-    end
+  defp session_expiration do
+    Application.get_env(:redbird, :expiration_in_seconds, @max_session_time)
+  end
+
+  defp refresh_on_touch do
+    Application.get_env(:redbird, :refresh_on_touch, false)
   end
 end
 

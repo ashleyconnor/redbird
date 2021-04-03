@@ -6,8 +6,7 @@ defmodule RedbirdTest do
 
   @default_opts [
     store: :redis,
-    key: "_session_key",
-    refresh_on_touch: false
+    key: "_session_key"
   ]
   @secret String.duplicate("thoughtbot", 8)
 
@@ -80,7 +79,7 @@ defmodule RedbirdTest do
       assert (Redbird.Redis.ttl(key) > 100) == true
     end
 
-    test "when refresh_on_touch disabled expiry is not refreshed" do
+    test "when refresh_on_touch not set expiry is not refreshed" do
       conn =
         conn(:get, "/")
         |> sign_conn(expiration_in_seconds: 100)
